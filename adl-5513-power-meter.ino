@@ -21,7 +21,7 @@ const float Cslope[6] =     { 0.021, 0.021, 0.021, 0.021, 0.021, 0.021 };
 const float Cintercept[6] = { -87.0, -87.0, -88.0, -88.0, -88.0, -88.0 };
 const float Ctadj[6] =      {   0.0,   0.0,   0.0,   0.0,   0.0,   0.0 };
 
-const int bands[6] = { 30, 50, 144, 430, 900, 1296 };
+const int bands[6] =        {    30,    50,   144,   430,   900,  1296 }; // Mhz
 
 unsigned int band = 4;
 
