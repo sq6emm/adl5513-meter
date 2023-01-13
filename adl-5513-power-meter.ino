@@ -25,21 +25,8 @@ int clkBlaststate = 0;
 
 // calibration table
 const unsigned int nobands = 5;
-/* // kalibracja u Mariusza w domu
-const float Aslope[nobands] =     {  0.02086,  0.02107,  0.02112,  0.02080,  0.02116 };
-const float Aintercept[nobands] = { -87.9674, -87.1648, -87.4526, -90.1923, -91.6824 };
-const float Atadj[nobands] =      {     0.00,     0.00,     0.00,     0.00,     0.00 };
 
-const float Bslope[nobands] =     {  0.02086,  0.02115,  0.02115,  0.02076,  0.02092 };
-const float Bintercept[nobands] = { -85.7142, -84.6806, -85.1536, -88.0057, -90.3919 };
-const float Btadj[nobands] =      {     0.00,     0.00,     0.00,     0.00,     0.00 };
-
-const float Cslope[nobands] =     {  0.02076,  0.02095,  0.02100,  0.02070,  0.02112 };
-const float Cintercept[nobands] = { -86.0308, -85.2505, -85.6190, -88.2608, -89.6306 };
-const float Ctadj[nobands] =      {     0.00,     0.00,     0.00,     0.00,     0.00 };
-*/
-
-// kalibracja u Mariusza w pracy (zakres -50dB do 0dB)
+// calibration table (calibration on: 2022-12 (range -50dB to 0dB))
 const float Aslope[nobands] =     {    0.021,  0.02106,  0.02124,  0.02122,   0.0211 };
 const float Aintercept[nobands] = { -87.6190, -87.4643, -87.0527, -89.1140, -91.5639 };
 const float Atadj[nobands] =      {     0.00,     0.00,     0.00,     0.00,     0.00 };
@@ -53,7 +40,12 @@ const float Cintercept[nobands] = { -85.7829, -85.2380, -85.7824, -86.9895, -88.
 const float Ctadj[nobands] =      {     0.00,     0.00,     0.00,     0.00,     0.00 };
 
 const int bands[nobands] =        {       50,      144,      433,     1296,     2320 }; // MHz
-// calibration table
+// end of calibration table
+
+// calibration table for directional coupler
+const int Bfwd[nobands] =        {       50,      144,      433,     1296,     2320 }; // MHz
+const int Cref[nobands] =        {       50,      144,      433,     1296,     2320 }; // MHz
+// end of calibration table for directional coupler
 
 volatile float tempAatt = 0;
 float Aatt = 0;
@@ -81,8 +73,18 @@ float vin2dbm(float in,float slope,float intercept) {
   return (in/slope)+intercept;
 }
 
+float dbm2v(float in) {
+  return (sqrt(50/1000)*pow(10,(in/20)));
+}
+
 float dbm2watts(float in) {
   return pow(10,((in-30)/10));
+}
+
+float swr(float fwd, float ref) {
+  fwd = dbm2watts(fwd);
+  ref = dbm2watts(ref);
+  return ( 1 + sqrt(ref/fwd) ) / ( 1 - sqrt(ref/fwd) );
 }
 
 String printWatts(float dBmIn) {
@@ -104,6 +106,18 @@ String printWatts(float dBmIn) {
   else if ( dBmIn > -30.0 ) { w = w*1000*1000; dtostrf(w, 3, 0, wf); sprintf(r, "%suW" ,wf); return r; }
   else if ( dBmIn > -60.1 ) { w = w*1000*1000*1000; dtostrf(w, 3, 0, wf); sprintf(r, "%snW" ,wf); return r; }
   else if ( dBmIn > -90.0 ) { w = w*1000*1000*1000*1000; dtostrf(w, 3, 0, wf); sprintf(r, "%spW" ,wf); return r; }
+}
+
+String printDbms(float dBmIn) {
+/*
+-99.9dBm
+999.9dBm
+*/
+  char wf[12];
+  char r[12];
+  dtostrf(dBmIn, 5, 1, wf);
+  sprintf(r, "%sdBm", wf);
+  return r;
 }
 
 void bandChange() {
@@ -199,13 +213,13 @@ void loop() {
     float BdBm = vin2dbm(aBin,Bslope[band],Bintercept[band])+Batt; float BWatt = dbm2watts(BdBm);
     float CdBm = vin2dbm(aCin,Cslope[band],Cintercept[band])+Catt; float CWatt = dbm2watts(CdBm);
     lcd.setCursor(0,0); lcd.print("                    ");
-    lcd.setCursor(0,0); lcd.print(bands[band]); lcd.print(" MHz  Vdc    dBm");
+    lcd.setCursor(0,0); lcd.print(bands[band]); lcd.print(" MHz"); lcd.print("  "); lcd.print(Aatt,1); lcd.print("dB att"); 
     lcd.setCursor(0,1); lcd.print("                    ");
-    lcd.setCursor(0,1); lcd.print("A "); lcd.print(Aatt,1); lcd.print(" ");lcd.print(printWatts(AdBm)); lcd.print(" "); lcd.print(AdBm,1);
+    lcd.setCursor(0,1); lcd.print("A"); lcd.print(" "); lcd.print(printWatts(AdBm)); lcd.print(" "); lcd.print(printDbms(AdBm));
     lcd.setCursor(0,2); lcd.print("                    ");
-    lcd.setCursor(0,2); lcd.print("B "); lcd.print(Batt,1); lcd.print(" ");lcd.print(printWatts(BdBm)); lcd.print(" "); lcd.print(BdBm,1);
+    lcd.setCursor(0,2); lcd.print("PWR:"); lcd.print(" ");lcd.print(printWatts(BdBm));
     lcd.setCursor(0,3); lcd.print("                    ");
-    lcd.setCursor(0,3); lcd.print("C "); lcd.print(Catt,1); lcd.print(" ");lcd.print(printWatts(CdBm)); lcd.print(" "); lcd.print(CdBm,1);
+    lcd.setCursor(0,3); lcd.print("SWR:"); lcd.print(" "); lcd.print(swr(BdBm,CdBm));
   
     lastClear = millis();
   }
