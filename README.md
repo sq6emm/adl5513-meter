@@ -1,7 +1,7 @@
 # adl5513-meter
 ADL5513 based triple POWER/SWR meter
 
-Based on 3 SV1AFN modules.
+Based on 3 SV1AFN ADL5513 modules.
 
 Meter is still work in progress.
 
